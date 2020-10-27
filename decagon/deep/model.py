@@ -101,10 +101,19 @@ class DecagonModel(Model):
                     edge_type=(i, j), num_types=self.edge_types[i, j],
                     act=lambda x: x, dropout=self.dropout)
             elif decoder == 'bilinear':
-                self.edge_type2decoder[i, j] = BilinearDecoder(
-                    input_dim=FLAGS.hidden2, logging=self.logging,
-                    edge_type=(i, j), num_types=self.edge_types[i, j],
-                    act=lambda x: x, dropout=self.dropout)
+                if i <= j:
+                    self.edge_type2decoder[i, j] = BilinearDecoder(
+                        input_dim=FLAGS.hidden2, logging=self.logging,
+                        edge_type=(i, j), num_types=self.edge_types[i, j],
+                        act=lambda x: x, dropout=self.dropout)
+                if i > j:
+                    weights = []
+                    for k in range(self.edge_types[i, j]):
+                        weights.append(tf.transpose(self.edge_type2decoder[j, i].vars['relation_%d' % k]))
+                    self.edge_type2decoder[i, j] = BilinearDecoder(
+                        input_dim=FLAGS.hidden2, logging=self.logging,
+                        edge_type=(j, i), num_types=self.edge_types[j, i],
+                        act=lambda x: x, dropout=self.dropout, weights=weights)
             elif decoder == 'dedicom':
                 self.edge_type2decoder[i, j] = DEDICOMDecoder(
                     input_dim=FLAGS.hidden2, logging=self.logging,

@@ -174,14 +174,17 @@ class DistMultDecoder(MultiLayer):
 
 class BilinearDecoder(MultiLayer):
     """Bilinear Decoder model layer for link prediction."""
-    def __init__(self, input_dim, dropout=0., act=tf.nn.sigmoid, **kwargs):
+    def __init__(self, input_dim, dropout=0., act=tf.nn.sigmoid, weights=None, **kwargs):
         super(BilinearDecoder, self).__init__(**kwargs)
         self.dropout = dropout
         self.act = act
+        if weights is not None:
+            assert len(weights) == self.num_types
+            
         with tf.variable_scope('%s_vars' % self.name):
             for k in range(self.num_types):
                 self.vars['relation_%d' % k] = inits.weight_variable_glorot(
-                    input_dim, input_dim, name='relation_%d' % k)
+                    input_dim, input_dim, name='relation_%d' % k) if weights is None else weights[k]
 
     def _call(self, inputs):
         i, j = self.edge_type

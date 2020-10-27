@@ -200,6 +200,12 @@ class EdgeMinibatchIterator(object):
             ind = np.random.permutation(len(edge_list))
             val_edges = [edge_list[i] for i in ind[:min(size, len(ind))]]
             return self.batch_feed_dict(val_edges, edge_type, placeholders)
+        
+    def symmetrize_test_edges(self, from_idx=(1,0), to_idx=(0,1)):
+        self.test_edges[to_idx][0] = np.flip(self.test_edges[from_idx][0], axis=-1)
+        assert np.linalg.norm(self.test_edges[to_idx][0] - np.flip(self.test_edges[from_idx][0], axis=-1)) == 0
+        self.test_edges_false[to_idx][0] = np.flip(self.test_edges_false[from_idx][0], axis=-1)
+        assert np.linalg.norm(self.test_edges_false[to_idx][0] - np.flip(self.test_edges_false[from_idx][0], axis=-1)) == 0
 
     def shuffle(self):
         """ Re-shuffle the training set.
