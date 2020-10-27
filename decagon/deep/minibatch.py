@@ -16,7 +16,7 @@ class EdgeMinibatchIterator(object):
     placeholders -- tensorflow placeholders object
     batch_size -- size of the minibatches
     """
-    def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01):
+    def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01, symmetrize_test_edges=True):
         self.adj_mats = adj_mats
         self.feat = feat
         self.edge_types = edge_types
@@ -53,6 +53,9 @@ class EdgeMinibatchIterator(object):
                 print("Train edges=", "%04d" % len(self.train_edges[i,j][k]))
                 print("Val edges=", "%04d" % len(self.val_edges[i,j][k]))
                 print("Test edges=", "%04d" % len(self.test_edges[i,j][k]))
+                
+        if symmetrize_test_edges:
+            self.symmetrize_test_edges(from_idx=(1,0), to_idx=(0,1))
 
     def preprocess_graph(self, adj):
         adj = sp.coo_matrix(adj)

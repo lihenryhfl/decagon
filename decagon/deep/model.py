@@ -45,7 +45,7 @@ class Model(object):
 
 
 class DecagonModel(Model):
-    def __init__(self, placeholders, num_feat, nonzero_feat, edge_types, decoders, **kwargs):
+    def __init__(self, placeholders, num_feat, nonzero_feat, edge_types, decoders, symmetrize_weights=True, **kwargs):
         super(DecagonModel, self).__init__(**kwargs)
         self.edge_types = edge_types
         self.num_edge_types = sum(self.edge_types.values())
@@ -59,6 +59,7 @@ class DecagonModel(Model):
         self.adj_mats = {et: [
             placeholders['adj_mats_%d,%d,%d' % (et[0], et[1], k)] for k in range(n)]
             for et, n in self.edge_types.items()}
+        self.symmetrize_weights = symmetrize_weights
         self.build()
 
     def _build(self):
@@ -106,7 +107,7 @@ class DecagonModel(Model):
                         input_dim=FLAGS.hidden2, logging=self.logging,
                         edge_type=(i, j), num_types=self.edge_types[i, j],
                         act=lambda x: x, dropout=self.dropout)
-                if i > j:
+                if self.symmetrize_weights and i > j:
                     weights = []
                     for k in range(self.edge_types[i, j]):
                         weights.append(tf.transpose(self.edge_type2decoder[j, i].vars['relation_%d' % k]))
