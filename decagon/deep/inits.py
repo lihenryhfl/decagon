@@ -1,4 +1,9 @@
 import tensorflow as tf
+if tf.__version__[0] == '2':
+    import tensorflow.compat.v1 as tf
+    tf.compat.v1.disable_v2_behavior()
+else:
+    pass
 import numpy as np
 
 

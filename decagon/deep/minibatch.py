@@ -178,7 +178,7 @@ class EdgeMinibatchIterator(object):
 
             i, j, k = self.idx2edge_type[self.current_edge_type_idx]
             if self.batch_num[self.current_edge_type_idx] * self.batch_size \
-                   <= len(self.train_edges[i,j][k]) - self.batch_size + 1:
+                   <= len(self.train_edges[i,j][k]) - self.batch_size:
                 break
             else:
                 if self.iter % 4 in [0, 1, 2]:

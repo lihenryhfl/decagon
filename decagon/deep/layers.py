@@ -2,11 +2,13 @@ import tensorflow as tf
 
 from . import inits
 
+import tensorflow as tf
 if tf.__version__[0] == '2':
-    flags = tf.compat.v1.flags
+    import tensorflow.compat.v1 as tf
+    tf.compat.v1.disable_v2_behavior()
 else:
-    flags = tf.app.flags
-FLAGS = flags.FLAGS
+    pass
+FLAGS = tf.flags.FLAGS
 
 # global unique layer ID dictionary for layer name assignment
 _LAYER_UIDS = {}

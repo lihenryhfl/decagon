@@ -1,12 +1,14 @@
 import tensorflow as tf
 import numpy as np
 
+import tensorflow as tf
 if tf.__version__[0] == '2':
-    flags = tf.compat.v1.flags
+    import tensorflow.compat.v1 as tf
+    tf.compat.v1.disable_v2_behavior()
 else:
-    flags = tf.app.flags
+    pass
 
-FLAGS = flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 
 class DecagonOptimizer(object):
