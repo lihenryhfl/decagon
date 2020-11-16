@@ -1,7 +1,11 @@
 import tensorflow as tf
 import numpy as np
 
-flags = tf.app.flags
+if tf.__version__[0] == '2':
+    flags = tf.compat.v1.flags
+else:
+    flags = tf.app.flags
+
 FLAGS = flags.FLAGS
 
 
