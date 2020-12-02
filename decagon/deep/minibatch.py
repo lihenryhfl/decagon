@@ -16,7 +16,8 @@ class EdgeMinibatchIterator(object):
     placeholders -- tensorflow placeholders object
     batch_size -- size of the minibatches
     """
-    def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01, symmetrize_test_edges=True):
+    def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01, 
+                 test_node_idx_dict={}, val_node_idx_dict={}, symmetrize_test_edges=True):
         self.adj_mats = adj_mats
         self.feat = feat
         self.edge_types = edge_types
@@ -48,7 +49,9 @@ class EdgeMinibatchIterator(object):
         for i, j in self.edge_types:
             for k in range(self.edge_types[i,j]):
                 print("Minibatch edge type:", "(%d, %d, %d)" % (i, j, k))
-                self.mask_test_edges((i, j), k)
+                self.mask_test_edges((i, j), k, 
+                                     test_node_idx=test_node_idx_dict.get((i, j, k)), 
+                                     val_node_idx=val_node_idx_dict.get((i, j, k)))
 
                 print("Train edges=", "%04d" % len(self.train_edges[i,j][k]))
                 print("Val edges=", "%04d" % len(self.val_edges[i,j][k]))
@@ -77,22 +80,57 @@ class EdgeMinibatchIterator(object):
         b = np.array(b)
         rows_close = np.all(a - b == 0, axis=1)
         return np.any(rows_close)
+    
+    def split_by_idx(self, edges_all, split_node_idx):
+        from_idx, to_idx = split_node_idx
+        
+        # get test edge idxs (they must be edges that are in the from_idxs AND to_idxs)
+        from_mask = np.isin(edges_all[:,0], from_idx) if from_idx is not None else np.ones_like(edges_all[:,1])
+        to_mask = np.isin(edges_all[:,1], to_idx) if to_idx is not None else np.ones_like(edges_all[:,1])
+        mask = np.logical_and(from_mask, to_mask)
+        filtered_edge_idx = np.squeeze(np.array(np.where(mask)))
+        
+        # split edges_all into train and test
+        filtered_edges = edges_all[filtered_edge_idx]
+        remaining_edges = np.delete(edges_all, filtered_edge_idx, axis=0)
+        
+        return remaining_edges, filtered_edges
 
-    def mask_test_edges(self, edge_type, type_idx):
+    def mask_test_edges(self, edge_type, type_idx, test_node_idx=None, val_node_idx=None):
+        print('IMPORTANT MASK_TEST_EDGES', type(self.adj_mats[edge_type][type_idx]))
         edges_all, _, _ = preprocessing.sparse_to_tuple(self.adj_mats[edge_type][type_idx])
-        num_test = max(50, int(np.floor(edges_all.shape[0] * self.val_test_size)))
-        num_val = max(50, int(np.floor(edges_all.shape[0] * self.val_test_size)))
+        num_val_test = max(50, int(np.floor(edges_all.shape[0] * self.val_test_size)))
+        
+        # if test_node_idx (node idxs of test graph) is given, use it
+        if test_node_idx is not None:
+            print("WE ARE SPLITTING")
+            train_val_edges, test_edges = self.split_by_idx(edges_all, test_node_idx)
+            
+            # remove validation edges in the remainder
+            if val_node_idx is not None:
+                train_edges, val_edges = self.split_by_idx(train_val_edges, val_node_idx)
+            else:
+                train_val_edge_idx = list(range(train_val_edges.shape[0]))
+                np.random.shuffle(train_val_edge_idx)
 
-        all_edge_idx = list(range(edges_all.shape[0]))
-        np.random.shuffle(all_edge_idx)
+                val_edge_idx = train_val_edge_idx[:num_val_test]
+                val_edges = train_val_edges[val_edge_idx]
 
-        val_edge_idx = all_edge_idx[:num_val]
-        val_edges = edges_all[val_edge_idx]
-
-        test_edge_idx = all_edge_idx[num_val:(num_val + num_test)]
-        test_edges = edges_all[test_edge_idx]
-
-        train_edges = np.delete(edges_all, np.hstack([test_edge_idx, val_edge_idx]), axis=0)
+                train_edges = np.delete(train_val_edges, val_edge_idx, axis=0)
+        else:
+            print("WE ARE NOT SPLITTING")
+            # shuffle edge indices
+            all_edge_idx = list(range(edges_all.shape[0]))
+            np.random.shuffle(all_edge_idx)
+            
+            # remove validation and test edges
+            val_edge_idx = all_edge_idx[:num_val_test]
+            val_edges = edges_all[val_edge_idx]
+            
+            test_edge_idx = all_edge_idx[num_val_test:(num_val_test + num_val_test)]
+            test_edges = edges_all[test_edge_idx]
+            
+            train_edges = np.delete(edges_all, np.hstack([test_edge_idx, val_edge_idx]), axis=0)
 
         test_edges_false = []
         while len(test_edges_false) < len(test_edges):
@@ -177,6 +215,7 @@ class EdgeMinibatchIterator(object):
                     self.iter = 0
 
             i, j, k = self.idx2edge_type[self.current_edge_type_idx]
+#             print('self.batch_num[self.current_edge_type_idx]: {} \n self.batch_size: {} \n len(self.train_edges[i,j][k]) {}'.format(self.batch_num[self.current_edge_type_idx], self.batch_size, len(self.train_edges[i,j][k])))
             if self.batch_num[self.current_edge_type_idx] * self.batch_size \
                    <= len(self.train_edges[i,j][k]) - self.batch_size:
                 break
